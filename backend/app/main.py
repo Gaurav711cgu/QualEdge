@@ -1,0 +1,33 @@
+import uvicorn
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from backend.app.api.endpoints import router
+
+app = FastAPI(
+    title="Snapdragon Edge AI Console Backend",
+    description="FastAPI service serving AIMET compression suite metrics and Q2 hybrid router logic.",
+    version="1.0.0"
+)
+
+# Set up CORS middleware to allow cross-origin requests from the React + Vite frontend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # For local developer environment simplicity
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Mount endpoints
+app.include_router(router)
+
+@app.get("/")
+def read_root():
+    return {
+        "status": "online",
+        "service": "Snapdragon Edge AI Console API",
+        "documentation": "/docs"
+    }
+
+if __name__ == "__main__":
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

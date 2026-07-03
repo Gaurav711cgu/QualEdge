@@ -1,0 +1,50 @@
+# AIMET Compression Suite Configuration
+# Configures PTQ pipelines for MobileNetV2, Whisper-Tiny, and Phi-3-Mini
+
+models:
+  mobilenet_v2:
+    repo_id: "torchvision/mobilenet_v2"
+    family: "vision"
+    input_shape: [1, 3, 224, 224]
+    calibration_samples: 1024
+    adaround:
+      num_iterations: 10000
+      batch_size: 32
+      learning_rate: 0.005
+    precision_modes:
+      - "fp32"
+      - "w8a8"
+      - "w4a8"
+
+  whisper_tiny:
+    repo_id: "openai/whisper-tiny"
+    family: "audio"
+    calibration_samples: 256
+    adaround:
+      num_iterations: 5000
+      batch_size: 16
+      learning_rate: 0.002
+    precision_modes:
+      - "fp32"
+      - "w8a8"
+      - "w4a8"
+
+  phi_3_mini:
+    repo_id: "microsoft/Phi-3-mini-4k-instruct"
+    family: "language"
+    calibration_samples: 512
+    adaround:
+      num_iterations: 2000
+      batch_size: 8
+      learning_rate: 0.001
+    precision_modes:
+      - "fp32"
+      - "w8a8"
+      - "w4a8"
+
+qualcomm_ai_hub:
+  device: "Snapdragon X Elite CRD"
+  runtimes:
+    fp32: "precompiled_qnn_onnx"
+    w8a8: "qnn_context_binary"
+    w4a8: "qnn_context_binary"

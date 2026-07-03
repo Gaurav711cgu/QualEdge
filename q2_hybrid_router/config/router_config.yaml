@@ -1,0 +1,35 @@
+# Hybrid Router Configuration
+# Thresholds, model paths, energy coefficients, and drift bounds
+
+router:
+  type: "tfidf_logistic_regression"
+  vocab_max_features: 1000
+  thresholds:
+    on_device_limit: 0.35      # Under this score: always on-device
+    retry_limit: 0.70          # Between limits: on-device with self-verification/retry
+    cloud_required: 0.70       # Above this score: direct to cloud
+  drift:
+    reference_dataset_size: 500
+    psi_warning_threshold: 0.1
+    psi_alert_threshold: 0.2
+    rolling_window_queries: 1000
+
+models:
+  local:
+    name: "Qwen/Qwen2.5-0.5B-Instruct"
+    quantization: "w4a8"
+    runtime: "onnx"
+    target_latency_ms: 100.0
+  cloud:
+    name: "claude-3-5-sonnet-20241022"
+    target_latency_ms: 800.0
+
+economics:
+  cloud:
+    input_cost_per_1k: 0.003   # USD ($3 per million tokens)
+    output_cost_per_1k: 0.015  # USD ($15 per million tokens)
+  on_device:
+    # Micro-architectural energy estimation (HTP vs Kryo CPU) in Joules per query
+    energy_htp_j: 0.08         # Native INT4 HTP execution
+    energy_cpu_j: 2.10         # FP32 fallback on CPU execution
+    battery_capacity_wh: 75.0  # Snapdragon X Elite reference laptop (e.g. 75Wh)
