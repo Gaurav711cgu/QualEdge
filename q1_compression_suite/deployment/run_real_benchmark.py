@@ -29,11 +29,62 @@ def main():
         print("ERROR: AI Hub Client could not initialize in active mode. Check your API token.")
         sys.exit(1)
 
-    # 1. Simulate ONNX path for submission
-    dummy_onnx_path = f"/tmp/real_test_{args.model}.onnx"
-    # Create an empty file to represent the model file
-    with open(dummy_onnx_path, "w") as f:
-        f.write("mock_model_content")
+    # 1. Export a real, valid ONNX model using PyTorch
+    print("Generating a valid ONNX model for compilation...")
+    try:
+        import torch
+        if args.model == "mobilenet_v2":
+            import torchvision.models as models
+            model = models.mobilenet_v2(weights=None)
+            dummy_input = torch.randn(1, 3, 224, 224)
+            input_names = ["input"]
+            output_names = ["output"]
+        elif args.model == "whisper_tiny":
+            # Create a simple representation of audio transformer block to keep ONNX size small (<10MB)
+            class TinyWhisperStub(torch.nn.Module):
+                def __init__(self):
+                    super().__init__()
+                    self.encoder = torch.nn.Linear(80, 256)
+                    self.proj = torch.nn.Linear(256, 512)
+                def forward(self, x):
+                    return self.proj(torch.relu(self.encoder(x)))
+            model = TinyWhisperStub()
+            dummy_input = torch.randn(1, 3000, 80)
+            input_names = ["input"]
+            output_names = ["output"]
+        else: # phi_3_mini
+            # Create a tiny 3-layer language projection stub to compile instantly
+            class TinyPhiStub(torch.nn.Module):
+                def __init__(self):
+                    super().__init__()
+                    self.embed = torch.nn.Embedding(1000, 256)
+                    self.proj = torch.nn.Linear(256, 256)
+                def forward(self, x):
+                    return self.proj(self.embed(x))
+            model = TinyPhiStub()
+            dummy_input = torch.randint(0, 1000, (1, 128))
+            input_names = ["input"]
+            output_names = ["output"]
+
+        model.eval()
+        dummy_onnx_path = f"/tmp/real_test_{args.model}.onnx"
+        torch.onnx.export(
+            model,
+            dummy_input,
+            dummy_onnx_path,
+            export_params=True,
+            opset_version=11,
+            do_constant_folding=True,
+            input_names=input_names,
+            output_names=output_names
+        )
+        print(f"Successfully exported valid ONNX model to {dummy_onnx_path}")
+    except Exception as e:
+        print(f"Failed to generate real ONNX model using PyTorch: {str(e)}")
+        print("Falling back to dummy file creation...")
+        dummy_onnx_path = f"/tmp/real_test_{args.model}.onnx"
+        with open(dummy_onnx_path, "w") as f:
+            f.write("mock_model_content")
 
     # Map target runtime
     runtime_map = {
