@@ -1,3 +1,13 @@
+---
+title: QualEgde
+emoji: ⚡
+colorFrom: blue
+colorTo: blue
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # EdgeAI Suite
 
 Qualcomm-focused AI/ML portfolio project with two systems:

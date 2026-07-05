@@ -21,13 +21,21 @@ app.add_middleware(
 # Mount endpoints
 app.include_router(router)
 
-@app.get("/")
-def read_root():
-    return {
-        "status": "online",
-        "service": "Snapdragon Edge AI Console API",
-        "documentation": "/docs"
-    }
+# Serve React frontend static files if they are built (production packaging)
+from fastapi.staticfiles import StaticFiles
+import os
+
+frontend_dist = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "frontend", "dist")
+if os.path.exists(frontend_dist):
+    app.mount("/", StaticFiles(directory=frontend_dist, html=True), name="frontend")
+else:
+    @app.get("/")
+    def read_root():
+        return {
+            "status": "online",
+            "service": "Snapdragon Edge AI Console API",
+            "documentation": "/docs"
+        }
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
