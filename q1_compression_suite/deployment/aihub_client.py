@@ -195,11 +195,17 @@ class AIHubCoordinator:
                 
                 if job_type == "profile" and mapped_status == "success":
                     profile_data = job.download_profile()
-                    # Extract latency from downloaded profile JSON
-                    latency_ms = profile_data.get("execution_detail", {}).get("total_time_us", 0) / 1000.0
-                    # Parse out cpu fallbacks
-                    fallbacks = profile_data.get("execution_detail", {}).get("cpu_fallback_operators", [])
-                    cpu_fallbacks = [op.get("name") for op in fallbacks if op.get("name")]
+                    # Extract latency from downloaded profile JSON (in microseconds)
+                    summary = profile_data.get("execution_summary", {})
+                    latency_us = summary.get("estimated_inference_time", 0)
+                    if latency_us == 0 and summary.get("all_inference_times"):
+                        import statistics
+                        latency_us = statistics.median(summary.get("all_inference_times"))
+                    latency_ms = latency_us / 1000.0
+                    
+                    # Parse out cpu fallbacks by scanning execution layers
+                    detail = profile_data.get("execution_detail", [])
+                    cpu_fallbacks = list(set([layer.get("type") for layer in detail if layer.get("compute_unit") == "CPU" and layer.get("type")]))
                 
                 return {
                     "status": mapped_status,
