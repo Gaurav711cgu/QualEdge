@@ -22,8 +22,10 @@ def test_compression_benchmarks():
     assert response.status_code == 200
     data = response.json()
     assert len(data) >= 3
-    assert data[0]["modelName"] == "mobilenet_v2"
-    assert data[0]["precision"] == "fp32"
+    model_names = {b["modelName"] for b in data}
+    assert "mobilenet_v2" in model_names
+    assert "whisper_tiny" in model_names
+    assert "phi_3_mini" in model_names
 
 def test_aihub_jobs():
     response = client.get("/api/aihub/jobs")

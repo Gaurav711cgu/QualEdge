@@ -85,43 +85,46 @@ class RouterEvaluator:
 
     def sweep_thresholds(self) -> List[Dict[str, Any]]:
         """
-        Sweeps the complexity threshold slider from 0.0 to 1.0 (controlling the decision limit),
-        mapping out the tradeoff frontier for visual charts on the frontend.
+        Sweeps the complexity threshold slider from 0.05 to 0.95, mapping the tradeoff
+        frontier for the Pareto chart on the frontend.
+
+        FIX: Uses copy.deepcopy() to create an isolated router instance for the sweep.
+        Previously, this mutated self.router.thresholds in-place while the live API
+        may be routing real requests with the modified threshold, and each call to
+        self.router.route() was appending to input_feature_history, contaminating PSI
+        data with sweep traffic. The deep copy prevents both issues.
         """
+        import copy
         sweep_points = []
-        original_threshold = self.router.thresholds["on_device_limit"]
-        
-        # Sweep 10 steps
+
         for thresh in np.linspace(0.05, 0.95, 10):
-            # Temporarily apply threshold
-            self.router.thresholds["on_device_limit"] = float(thresh)
-            
-            # Re-evaluate
-            res = self.run_benchmark()
-            
-            # Calculate false negatives: complex queries routed to on_device (without retry or cloud)
-            # This represents a failure mode where the user receives a low-quality response.
+            # Isolated copy — the live router is never touched
+            sweep_router = copy.deepcopy(self.router)
+            sweep_router.thresholds["on_device_limit"] = float(thresh)
+
+            # Run benchmark on the isolated copy
+            evaluator_copy = RouterEvaluator(sweep_router)
+            res = evaluator_copy.run_benchmark()
+
             false_neg_count = 0
             complex_query_count = 0
-            
             for query, ground_truth in zip(self.test_x, self.test_y):
-                if ground_truth == 2:  # Complex query
+                if ground_truth == 2:
                     complex_query_count += 1
-                    route_result = self.router.route(query)
+                    route_result = sweep_router.route(query)
                     if route_result["decision"] == "on_device":
                         false_neg_count += 1
-                        
+
             fn_rate = (false_neg_count / max(complex_query_count, 1)) * 100.0
-            
+
             sweep_points.append({
                 "threshold": round(float(thresh), 2),
                 "falseNegativeRate": round(fn_rate, 2),
                 "cloudRate": res["cloud_rate"],
                 "onDeviceRate": res["on_device_rate"] + res["on_device_with_retry_rate"],
                 "estimatedCostPerThousand": res["average_cost_per_1k"],
-                "p95LatencyMs": round(res["average_latency_ms"] * 1.25, 2)  # Proxy for p95
+                "p95LatencyMs": round(res["average_latency_ms"] * 1.25, 2)
             })
-            
-        # Restore threshold
-        self.router.thresholds["on_device_limit"] = original_threshold
+
+        # self.router is completely untouched — live routing and PSI are unaffected
         return sweep_points

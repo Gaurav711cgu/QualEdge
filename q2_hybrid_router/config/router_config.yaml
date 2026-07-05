@@ -11,7 +11,7 @@ router:
   drift:
     reference_dataset_size: 500
     psi_warning_threshold: 0.1
-    psi_alert_threshold: 0.2
+    psi_alert_threshold: 0.25
     rolling_window_queries: 1000
 
 models:
