@@ -16,10 +16,20 @@ def main():
     parser.add_argument("--precision", type=str, required=True, choices=["fp32", "w8a8", "w4a8"], help="Quantization target precision")
     args = parser.parse_args()
 
+    # Load .env file manually if exists
+    dotenv_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.env"))
+    if os.path.exists(dotenv_path):
+        with open(dotenv_path, "r") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    key, val = line.split("=", 1)
+                    os.environ[key.strip()] = val.strip().strip('"').strip("'")
+
     api_token = os.environ.get("QAI_HUB_API_TOKEN")
     if not api_token:
         print("ERROR: QAI_HUB_API_TOKEN environment variable not set.")
-        print("Please configure your token: export QAI_HUB_API_TOKEN='your_token'")
+        print("Please configure your token in your .env file or export it.")
         sys.exit(1)
 
     print(f"=== Starting Real Qualcomm AI Hub Execution for {args.model} ({args.precision}) ===")
@@ -73,10 +83,11 @@ def main():
             dummy_input,
             dummy_onnx_path,
             export_params=True,
-            opset_version=11,
+            opset_version=15,
             do_constant_folding=True,
             input_names=input_names,
-            output_names=output_names
+            output_names=output_names,
+            dynamo=False
         )
         print(f"Successfully exported valid ONNX model to {dummy_onnx_path}")
     except Exception as e:
