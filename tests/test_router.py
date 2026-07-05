@@ -5,7 +5,9 @@ from q2_hybrid_router.evaluation.evaluator import RouterEvaluator
 
 def test_router_routing():
     # Load config
-    config_path = "/Users/gauravkumarnayak/Desktop/edgeai-suite/q2_hybrid_router/config/router_config.yaml"
+    import os
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    config_path = os.path.join(project_root, "q2_hybrid_router", "config", "router_config.yaml")
     with open(config_path, "r") as f:
         config = yaml.safe_load(f)
         
@@ -20,7 +22,9 @@ def test_router_routing():
     assert res_complex["decision"] == "cloud"
 
 def test_router_verification_retry():
-    config_path = "/Users/gauravkumarnayak/Desktop/edgeai-suite/q2_hybrid_router/config/router_config.yaml"
+    import os
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    config_path = os.path.join(project_root, "q2_hybrid_router", "config", "router_config.yaml")
     with open(config_path, "r") as f:
         config = yaml.safe_load(f)
         
@@ -36,7 +40,9 @@ def test_router_verification_retry():
     assert router.verify_local_output("query", "tokyo tokyo tokyo tokyo tokyo tokyo tokyo tokyo tokyo tokyo tokyo tokyo") is False
 
 def test_router_drift_psi():
-    config_path = "/Users/gauravkumarnayak/Desktop/edgeai-suite/q2_hybrid_router/config/router_config.yaml"
+    import os
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    config_path = os.path.join(project_root, "q2_hybrid_router", "config", "router_config.yaml")
     with open(config_path, "r") as f:
         config = yaml.safe_load(f)
         
@@ -62,7 +68,9 @@ def test_router_drift_psi():
     assert status == "alert"
 
 def test_router_evaluator():
-    config_path = "/Users/gauravkumarnayak/Desktop/edgeai-suite/q2_hybrid_router/config/router_config.yaml"
+    import os
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    config_path = os.path.join(project_root, "q2_hybrid_router", "config", "router_config.yaml")
     with open(config_path, "r") as f:
         config = yaml.safe_load(f)
         

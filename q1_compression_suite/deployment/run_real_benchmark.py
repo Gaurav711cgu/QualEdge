@@ -160,7 +160,8 @@ def main():
         print("HTP Execution: 100% hardware native (0 CPU fallbacks)")
 
     # 6. Save results to historical run cache
-    data_dir = "/Users/gauravkumarnayak/Desktop/edgeai-suite/backend/app/data"
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    data_dir = os.path.join(project_root, "backend", "app", "data")
     os.makedirs(data_dir, exist_ok=True)
     cache_path = os.path.join(data_dir, "measured_benchmarks.json")
     

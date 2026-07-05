@@ -4,7 +4,9 @@ from q1_compression_suite.compression.pipeline import AIMETCompressionPipeline
 
 def test_pipeline_simulation():
     # Load config
-    config_path = "/Users/gauravkumarnayak/Desktop/edgeai-suite/q1_compression_suite/config/compression_config.yaml"
+    import os
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    config_path = os.path.join(project_root, "q1_compression_suite", "config", "compression_config.yaml")
     with open(config_path, "r") as f:
         config = yaml.safe_load(f)
         
@@ -25,7 +27,9 @@ def test_pipeline_simulation():
     assert results[-1]["model_size_mb"] < results[0]["model_size_mb"]
 
 def test_pipeline_ood_collapse():
-    config_path = "/Users/gauravkumarnayak/Desktop/edgeai-suite/q1_compression_suite/config/compression_config.yaml"
+    import os
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    config_path = os.path.join(project_root, "q1_compression_suite", "config", "compression_config.yaml")
     with open(config_path, "r") as f:
         config = yaml.safe_load(f)
         

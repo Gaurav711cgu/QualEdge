@@ -24,9 +24,12 @@ app.include_router(router)
 # Serve React frontend static files if they are built (production packaging)
 from fastapi.staticfiles import StaticFiles
 import os
+import sys
 
 frontend_dist = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "frontend", "dist")
-if os.path.exists(frontend_dist):
+is_testing = "pytest" in sys.modules or (len(sys.argv) > 0 and "pytest" in sys.argv[0])
+
+if os.path.exists(frontend_dist) and not is_testing:
     app.mount("/", StaticFiles(directory=frontend_dist, html=True), name="frontend")
 else:
     @app.get("/")

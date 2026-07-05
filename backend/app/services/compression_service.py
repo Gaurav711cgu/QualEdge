@@ -14,8 +14,9 @@ logger = logging.getLogger("Compression-Service")
 
 class CompressionService:
     def __init__(self):
-        # Load compression config
-        config_path = "/Users/gauravkumarnayak/Desktop/edgeai-suite/q1_compression_suite/config/compression_config.yaml"
+        # Resolve config path relative to project root (4 levels up)
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+        config_path = os.path.join(project_root, "q1_compression_suite", "config", "compression_config.yaml")
         with open(config_path, "r") as f:
             self.config = yaml.safe_load(f)
             
@@ -82,7 +83,8 @@ class CompressionService:
 
     def _load_cached_runs(self):
         import json
-        cache_path = "/Users/gauravkumarnayak/Desktop/edgeai-suite/backend/app/data/measured_benchmarks.json"
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+        cache_path = os.path.join(project_root, "backend", "app", "data", "measured_benchmarks.json")
         if os.path.exists(cache_path):
             try:
                 with open(cache_path, "r") as f:

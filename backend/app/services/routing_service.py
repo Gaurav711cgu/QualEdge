@@ -1,5 +1,6 @@
 import yaml
 import logging
+import numpy as np
 from typing import Dict, Any, List, Tuple
 from q2_hybrid_router.router.classifier import HybridRouter
 from q2_hybrid_router.inference.local_engine import LocalInferenceEngine
@@ -11,7 +12,9 @@ logger = logging.getLogger("Routing-Service")
 
 class RoutingService:
     def __init__(self, compression_service):
-        config_path = "/Users/gauravkumarnayak/Desktop/edgeai-suite/q2_hybrid_router/config/router_config.yaml"
+        import os
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+        config_path = os.path.join(project_root, "q2_hybrid_router", "config", "router_config.yaml")
         with open(config_path, "r") as f:
             self.config = yaml.safe_load(f)
             
