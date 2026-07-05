@@ -27,12 +27,13 @@ class AIHubCoordinator:
         
         if QAI_HUB_AVAILABLE and self.api_token:
             try:
-                # Configure client with token
-                self.client = hub.Client(api_token=self.api_token)
+                # Configure client with token via environment variable
+                os.environ["QAI_HUB_API_TOKEN"] = self.api_token
+                self.client = hub.Client()
                 self.active_mode = True
                 logger.info("Qualcomm AI Hub Client initialized in ACTIVE mode.")
             except Exception as e:
-                logger.error(f"Failed to initialize AI Hub client with token: {str(e)}. Falling back to simulation.")
+                logger.error(f"Failed to initialize AI Hub client: {str(e)}. Falling back to simulation.")
         
     def submit_compile(self, model_name: str, model_path: str, runtime: str) -> Dict[str, Any]:
         """
