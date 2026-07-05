@@ -1,0 +1,20 @@
+[
+  {
+    "id": "bench_jp2vlomq5",
+    "source": "measured",
+    "modelName": "mobilenet_v2",
+    "family": "vision",
+    "precision": "w8a8",
+    "metricName": "top1_accuracy",
+    "metricValue": 71.48,
+    "modelSizeMb": 13.3,
+    "latencyMs": 0.637,
+    "target": {
+      "device": "Snapdragon X Elite CRD",
+      "runtime": "qnn_context_binary",
+      "accelerator": "hexagon_npu"
+    },
+    "cpuFallbackOps": [],
+    "verifiedAt": "2026-07-05T19:05:15.970186"
+  }
+]
