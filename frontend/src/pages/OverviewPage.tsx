@@ -39,7 +39,7 @@ import type {
 } from "../types/api";
 
 export function OverviewPage() {
-  const [activeTab, setActiveTab] = useState<"overview" | "aimet" | "matrix" | "router">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "aimet" | "matrix" | "router" | "research">("overview");
   
   // API States
   const [stats, setStats] = useState<OverviewStats | null>(null);
@@ -333,6 +333,14 @@ export function OverviewPage() {
           >
             <ServerCog className="h-4 w-4" />
             Hybrid Router Playground
+          </button>
+          <button
+            onClick={() => setActiveTab("research")}
+            className={`flex items-center gap-2 border-b-2 px-5 py-3 text-sm font-semibold transition ${activeTab === "research" ? "border-cyan-400 text-cyan-400" : "border-transparent text-slate-400 hover:text-slate-200"}`}
+            id="tab_research"
+          >
+            <HelpCircle className="h-4 w-4" />
+            Research & References
           </button>
         </div>
 
@@ -965,6 +973,178 @@ export function OverviewPage() {
                 </div>
               </div>
               
+            </div>
+          </div>
+        )}
+
+        {activeTab === "research" && (
+          <div className="grid gap-6">
+            <div className="rounded-xl border border-slate-800 bg-slate-950 p-6 shadow-lg">
+              <h2 className="text-xl font-bold tracking-tight bg-gradient-to-r from-slate-100 to-cyan-300 bg-clip-text text-transparent mb-2">
+                QualEdge EdgeAI Scientific Grounding
+              </h2>
+              <p className="text-slate-400 text-sm max-w-3xl mb-6">
+                This workspace implements production-ready ML engineering pipelines inspired by peer-reviewed literature in model compression, post-training optimization, and hybrid edge-cloud routing. Explore the academic foundation and upcoming engineering roadmap below.
+              </p>
+
+              {/* Research Grid */}
+              <div className="grid gap-6 md:grid-cols-2">
+                
+                {/* Section A: Optimization & PTQ */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold uppercase tracking-wider text-cyan-400 border-b border-slate-800 pb-2">
+                    1. Model Compression & Quantization
+                  </h3>
+
+                  {/* AdaRound Paper */}
+                  <div className="rounded-lg bg-slate-900/50 border border-slate-800 p-4 hover:border-slate-700 transition">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-sm font-bold text-slate-200">ICML 2020: AdaRound</h4>
+                      <a 
+                        href="https://arxiv.org/abs/2004.09602" 
+                        target="_blank" 
+                        rel="noreferrer"
+                        className="text-xs text-cyan-400 hover:underline flex items-center gap-1"
+                      >
+                        ArXiv <ArrowRight className="h-3 w-3" />
+                      </a>
+                    </div>
+                    <p className="text-xs text-slate-400 italic mb-2">
+                      "Up or Down? Adaptive Rounding for Post-Training Quantization" (Nagel et al., Qualcomm AI Research)
+                    </p>
+                    <div className="text-xs space-y-1.5 text-slate-300">
+                      <p><strong>Core Concept:</strong> Traditional rounding (to nearest integer) is sub-optimal. AdaRound optimizes rounding decisions per-layer by minimizing output feature map reconstruction error.</p>
+                      <p className="text-cyan-400/90 font-medium"><strong>Built in QualEdge:</strong> Implemented simulated W8A8 and W4A8 adaptive rounding pipelines for MobileNetV2, resulting in zero accuracy drop at 8-bit and preserving NPU hardware friendliness.</p>
+                    </div>
+                  </div>
+
+                  {/* CLE Paper */}
+                  <div className="rounded-lg bg-slate-900/50 border border-slate-800 p-4 hover:border-slate-700 transition">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-sm font-bold text-slate-200">ICCV 2019: CLE & Bias Correction</h4>
+                      <a 
+                        href="https://arxiv.org/abs/1906.04721" 
+                        target="_blank" 
+                        rel="noreferrer"
+                        className="text-xs text-cyan-400 hover:underline flex items-center gap-1"
+                      >
+                        ArXiv <ArrowRight className="h-3 w-3" />
+                      </a>
+                    </div>
+                    <p className="text-xs text-slate-400 italic mb-2">
+                      "Data-Free Quantization Through Weight Equalization and Bias Correction" (Nagel et al., Qualcomm AI Research)
+                    </p>
+                    <div className="text-xs space-y-1.5 text-slate-300">
+                      <p><strong>Core Concept:</strong> MobileNet-style depthwise-separable layers suffer from wide range differences. Cross-Layer Equalization (CLE) rescales weights dynamically without losing representation capability.</p>
+                      <p className="text-cyan-400/90 font-medium"><strong>Built in QualEdge:</strong> Integrated Weight Equalization and Fold Batch Normalization stages preceding quantization to suppress outliers in depthwise convolutions.</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Section B: Hybrid Inference & Routing */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold uppercase tracking-wider text-cyan-400 border-b border-slate-800 pb-2">
+                    2. Hybrid Edge-Cloud Workload Routing
+                  </h3>
+
+                  {/* Hybrid LLM Router */}
+                  <div className="rounded-lg bg-slate-900/50 border border-slate-800 p-4 hover:border-slate-700 transition">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-sm font-bold text-slate-200">ICLR 2024: Hybrid LLM Router</h4>
+                      <a 
+                        href="https://openreview.net/forum?id=V29nLhL2Hk" 
+                        target="_blank" 
+                        rel="noreferrer"
+                        className="text-xs text-cyan-400 hover:underline flex items-center gap-1"
+                      >
+                        OpenReview <ArrowRight className="h-3 w-3" />
+                      </a>
+                    </div>
+                    <p className="text-xs text-slate-400 italic mb-2">
+                      "Hybrid LLM: Cost-Efficient and Quality-Aware Query Routing" (Ding et al.)
+                    </p>
+                    <div className="text-xs space-y-1.5 text-slate-300">
+                      <p><strong>Core Concept:</strong> Not all queries require a 70B parameter model. Under-1B local models can handle simple tasks, saving cloud cost and improving user latency.</p>
+                      <p className="text-cyan-400/90 font-medium"><strong>Built in QualEdge:</strong> Engineered a lightweight Logistic Regression router classifying query complexity based on prompt keywords, routing simple tasks to local simulated engine and complex tasks to cloud.</p>
+                    </div>
+                  </div>
+
+                  {/* AutoMix Output Cascading */}
+                  <div className="rounded-lg bg-slate-900/50 border border-slate-800 p-4 hover:border-slate-700 transition">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-sm font-bold text-slate-200">ArXiv 2024: AutoMix Cascade</h4>
+                      <a 
+                        href="https://arxiv.org/abs/2310.14488" 
+                        target="_blank" 
+                        rel="noreferrer"
+                        className="text-xs text-cyan-400 hover:underline flex items-center gap-1"
+                      >
+                        ArXiv <ArrowRight className="h-3 w-3" />
+                      </a>
+                    </div>
+                    <p className="text-xs text-slate-400 italic mb-2">
+                      "AutoMix: Mix-of-Granularity LLMs for Efficient Inference" (Yue et al.)
+                    </p>
+                    <div className="text-xs space-y-1.5 text-slate-300">
+                      <p><strong>Core Concept:</strong> Evaluates local model responses for self-verification, falling back to a larger model (Cascade) only if low confidence or repetitive generation loops are detected.</p>
+                      <p className="text-cyan-400/90 font-medium"><strong>Built in QualEdge:</strong> Created an automated verification pipeline that parses local model outputs, checks for degradation (repetitive loops or null strings), and triggers cloud-degradation fallbacks.</p>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Roadmap Timeline */}
+              <div className="mt-8 border-t border-slate-800 pt-6">
+                <h3 className="text-sm font-semibold uppercase tracking-wider text-cyan-400 mb-4">
+                  Engineering Roadmap & Future Implementations
+                </h3>
+                <div className="grid gap-4 md:grid-cols-3">
+                  
+                  {/* Phase 1: Completed */}
+                  <div className="rounded-lg border border-emerald-900/50 bg-emerald-950/10 p-4">
+                    <div className="flex items-center gap-2 mb-2 text-emerald-400">
+                      <span className="h-2 w-2 rounded-full bg-emerald-400"></span>
+                      <h4 className="text-xs font-bold uppercase tracking-wider">Phase 1: Foundation (Done)</h4>
+                    </div>
+                    <ul className="text-xs text-slate-300 space-y-2 list-disc pl-4">
+                      <li>AIMET PTQ Pipeline simulations (CLE, Fold BN, Relu6 Replacement)</li>
+                      <li>AdaRound PTQ implementation for W8A8 weights and activations</li>
+                      <li>TF-IDF & Logistic Regression router engine with self-verification</li>
+                      <li>Interactive Deployment dashboard built on React & Vite</li>
+                    </ul>
+                  </div>
+
+                  {/* Phase 2: In Progress */}
+                  <div className="rounded-lg border border-amber-900/50 bg-amber-950/10 p-4">
+                    <div className="flex items-center gap-2 mb-2 text-amber-400">
+                      <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse"></span>
+                      <h4 className="text-xs font-bold uppercase tracking-wider">Phase 2: On-Device Compile (WIP)</h4>
+                    </div>
+                    <ul className="text-xs text-slate-300 space-y-2 list-disc pl-4">
+                      <li>Qualcomm AI Hub compilation pipeline integrations for Snapdragon NPU</li>
+                      <li>Real device latency profiling script integration (`run_real_benchmark.py`)</li>
+                      <li>Population of historical latency cache to enable robust sweep telemetry</li>
+                    </ul>
+                  </div>
+
+                  {/* Phase 3: Planned */}
+                  <div className="rounded-lg border border-slate-800 bg-slate-900/20 p-4">
+                    <div className="flex items-center gap-2 mb-2 text-slate-400">
+                      <span className="h-2 w-2 rounded-full bg-slate-400"></span>
+                      <h4 className="text-xs font-bold uppercase tracking-wider">Phase 3: Next Horizons (Planned)</h4>
+                    </div>
+                    <ul className="text-xs text-slate-300 space-y-2 list-disc pl-4">
+                      <li>Quantization-Aware Training (QAT) using PyTorch STE (Straight-Through Estimators)</li>
+                      <li>ModernBERT-mini encoder-based hybrid router to capture semantic syntax features under 10ms</li>
+                      <li>Key-Value (KV) cache INT4 quantization for local LLM inference engines</li>
+                      <li>Speculative Decoding on-device using compressed draft models</li>
+                    </ul>
+                  </div>
+
+                </div>
+              </div>
+
             </div>
           </div>
         )}
