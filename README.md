@@ -1,12 +1,4 @@
----
-title: QualEgde
-emoji: ⚡
-colorFrom: blue
-colorTo: blue
-sdk: docker
-app_port: 7860
-pinned: false
----
+
 
 # QualEdge: Qualcomm Snapdragon Edge AI Optimization Console
 
