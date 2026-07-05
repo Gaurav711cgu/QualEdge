@@ -1,4 +1,12 @@
-# Use a slim, stable Python base image
+# Stage 1: Build the React + Vite frontend
+FROM node:20-slim AS frontend-builder
+WORKDIR /app/frontend
+COPY ./frontend/package*.json ./
+RUN npm ci
+COPY ./frontend/ ./
+RUN VITE_API_BASE_URL="" npm run build
+
+# Stage 2: Final Python application container
 FROM python:3.11-slim
 
 # Set system-level environment variables
@@ -20,6 +28,9 @@ RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
 
 # Copy the entire workspace into the container
 COPY . /code
+
+# Copy the compiled React assets from Stage 1 into the frontend/dist folder
+COPY --from=frontend-builder /app/frontend/dist /code/frontend/dist
 
 # Expose port (FastAPI default, matching Hugging Face Spaces default port 7860)
 EXPOSE 7860
