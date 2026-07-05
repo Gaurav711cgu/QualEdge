@@ -106,7 +106,7 @@ class AIHubCoordinator:
         if self.active_mode and self.client:
             try:
                 logger.info(f"Submitting native profile job for compile job {compile_job_id}...")
-                compile_job = self.client.get_compile_job(compile_job_id)
+                compile_job = self.client.get_job(compile_job_id)
                 compiled_model = compile_job.get_target_model()
                 
                 job = self.client.submit_profile_job(
@@ -174,9 +174,9 @@ class AIHubCoordinator:
         if self.active_mode and self.client:
             try:
                 if job_type == "compile":
-                    job = self.client.get_compile_job(job_id)
+                    job = self.client.get_job(job_id)
                 else:
-                    job = self.client.get_profile_job(job_id)
+                    job = self.client.get_job(job_id)
                 
                 status = job.get_status()
                 
