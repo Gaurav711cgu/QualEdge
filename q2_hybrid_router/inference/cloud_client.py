@@ -16,12 +16,21 @@ class CloudInferenceClient:
         self.model_name = self.config["name"]
         self.target_latency = self.config["target_latency_ms"]
         
-        # Load keys
+        # Load keys (sanitize placeholders)
         self.gemini_key = os.environ.get("GEMINI_API_KEY")
+        if self.gemini_key == "PASTE_YOUR_GEMINI_KEY_HERE":
+            self.gemini_key = None
+            
         self.anthropic_key = os.environ.get("ANTHROPIC_API_KEY")
+        if self.anthropic_key == "PASTE_YOUR_ANTHROPIC_KEY_HERE":
+            self.anthropic_key = None
+            
+        self.groq_key = os.environ.get("GROQ_API_KEY")
+        if self.groq_key == "PASTE_YOUR_GROQ_KEY_HERE":
+            self.groq_key = None
         
         self.active_mode = False
-        if self.gemini_key or self.anthropic_key:
+        if self.gemini_key or self.anthropic_key or self.groq_key:
             self.active_mode = True
             logger.info("Cloud Inference Client initialized in ACTIVE mode.")
         else:
@@ -36,7 +45,19 @@ class CloudInferenceClient:
         if self.active_mode:
             # Active path if keys are provided
             try:
-                if self.anthropic_key:
+                if self.groq_key:
+                    import groq
+                    client = groq.Groq(api_key=self.groq_key)
+                    model_to_use = self.config.get("groq_model", "llama-3.3-70b-versatile")
+                    chat_completion = client.chat.completions.create(
+                        messages=[{"role": "user", "content": query}],
+                        model=model_to_use
+                    )
+                    text = chat_completion.choices[0].message.content
+                    # Estimate tokens
+                    input_tokens = len(query.split()) * 1.3
+                    output_tokens = len(text.split()) * 1.3
+                elif self.anthropic_key:
                     import anthropic
                     client = anthropic.Anthropic(api_key=self.anthropic_key)
                     message = client.messages.create(
