@@ -66,6 +66,92 @@ export function OverviewPage() {
   const [loading, setLoading] = useState<boolean>(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  // Interactive Simulator States
+  const [simPrompt, setSimPrompt] = useState<string>("What is the capital of Japan?");
+  const [simStep, setSimStep] = useState<number>(0);
+  const [isSimulating, setIsSimulating] = useState<boolean>(false);
+  const [simLogs, setSimLogs] = useState<string[]>([]);
+  const [simMetrics, setSimMetrics] = useState<{
+    latency: number;
+    energy: number;
+    cost: number;
+    path: "local" | "local_retry" | "cloud";
+    decision: string;
+  } | null>(null);
+
+  const startSimulation = () => {
+    setIsSimulating(true);
+    setSimStep(1);
+    setSimMetrics(null);
+    setSimLogs(["[SIM] Ingesting prompt vector..."]);
+    
+    setTimeout(() => {
+      setSimStep(2);
+      if (simPrompt.includes("Japan")) {
+        setSimLogs(prev => [...prev, "[SIM] TF-IDF analysis: LOW COMPLEXITY (score: 0.12)", "[SIM] Gating decision: Route ON-DEVICE"]);
+      } else if (simPrompt.includes("feedback")) {
+        setSimLogs(prev => [...prev, "[SIM] TF-IDF analysis: MODERATE COMPLEXITY (score: 0.44)", "[SIM] Gating decision: Route ON-DEVICE"]);
+      } else {
+        setSimLogs(prev => [...prev, "[SIM] TF-IDF analysis: HIGH COMPLEXITY (score: 0.88)", "[SIM] Gating decision: Bypassing local NPU, Route DIRECT TO CLOUD"]);
+      }
+    }, 1000);
+
+    setTimeout(() => {
+      setSimStep(3);
+      if (simPrompt.includes("Japan")) {
+        setSimLogs(prev => [...prev, "[SIM] Loading Qwen-0.5B graph...", "[SIM] Executing matrix multiplies on Hexagon HTP NPU...", "[SIM] NPU INT8 operations completed. Energy drawn: 0.08J"]);
+      } else if (simPrompt.includes("feedback")) {
+        setSimLogs(prev => [...prev, "[SIM] Loading Qwen-0.5B graph...", "[SIM] Executing matrix multiplies on Hexagon HTP NPU...", "[SIM] WARNING: LayerNorm operator unsupported on HTP. Falling back to Kryo CPU...", "[SIM] CPU execution penalty applied. Total Energy drawn: 2.22J"]);
+      } else {
+        setSimLogs(prev => [...prev, "[SIM] Initiating Cloud Client...", "[SIM] Offloading token generation to Claude/Gemini API..."]);
+      }
+    }, 2000);
+
+    setTimeout(() => {
+      setSimStep(4);
+      if (simPrompt.includes("Japan")) {
+        setSimLogs(prev => [...prev, "[SIM] Running output self-verification check...", "[SIM] SUCCESS: Output verified. Repetition index: 0.00"]);
+      } else if (simPrompt.includes("feedback")) {
+        setSimLogs(prev => [...prev, "[SIM] Running output self-verification check...", "[SIM] ERROR: Repetitive sequence detected (index: 0.76). Local output collapsed.", "[SIM] Escalating query to cloud retry cascade (AutoMix)...", "[SIM] Fetching cloud response..."]);
+      } else {
+        setSimLogs(prev => [...prev, "[SIM] Direct cloud generation complete."]);
+      }
+    }, 3000);
+
+    setTimeout(() => {
+      setSimStep(5);
+      setIsSimulating(false);
+      if (simPrompt.includes("Japan")) {
+        setSimMetrics({
+          latency: 87.2,
+          energy: 0.12,
+          cost: 0.00,
+          path: "local",
+          decision: "Local NPU"
+        });
+        setSimLogs(prev => [...prev, "[SIM] Process complete. Execution trace saved."]);
+      } else if (simPrompt.includes("feedback")) {
+        setSimMetrics({
+          latency: 896.5,
+          energy: 2.22,
+          cost: 0.0055,
+          path: "local_retry",
+          decision: "Local NPU + Cloud Retry"
+        });
+        setSimLogs(prev => [...prev, "[SIM] Process complete. Execution trace saved."]);
+      } else {
+        setSimMetrics({
+          latency: 800.0,
+          energy: 0.0,
+          cost: 0.0055,
+          path: "cloud",
+          decision: "Direct Cloud"
+        });
+        setSimLogs(prev => [...prev, "[SIM] Process complete. Execution trace saved."]);
+      }
+    }, 4000);
+  };
+
   // Load initial data
   useEffect(() => {
     loadDashboardData();
@@ -986,6 +1072,176 @@ export function OverviewPage() {
               <p className="text-slate-400 text-sm max-w-3xl mb-6">
                 This workspace implements production-ready ML engineering pipelines inspired by peer-reviewed literature in model compression, post-training optimization, and hybrid edge-cloud routing. Explore the academic foundation and upcoming engineering roadmap below.
               </p>
+
+              {/* Interactive Simulator Box */}
+              <div className="mb-8 rounded-xl border border-slate-800 bg-slate-900/40 p-5" id="sim_container">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-4 mb-6">
+                  <div>
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">
+                      <Sparkles className="h-4 w-4 text-cyan-400 animate-pulse" />
+                      Interactive Silicon Lifecycle Simulator
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-1">Select a query type to simulate its execution routing down to NPU hardware cores and self-verification checks.</p>
+                  </div>
+                  
+                  {/* Preset Selector */}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => { setSimPrompt("What is the capital of Japan?"); setSimStep(0); setSimMetrics(null); setSimLogs([]); }}
+                      disabled={isSimulating}
+                      className={`px-3 py-1.5 text-xxs font-mono rounded border transition ${simPrompt.includes("Japan") ? "bg-cyan-500/10 text-cyan-400 border-cyan-500/30" : "bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-300"}`}
+                      id="sim_btn_simple"
+                    >
+                      🟢 Simple Query
+                    </button>
+                    <button
+                      onClick={() => { setSimPrompt("Draft a polite email asking for feedback on my project."); setSimStep(0); setSimMetrics(null); setSimLogs([]); }}
+                      disabled={isSimulating}
+                      className={`px-3 py-1.5 text-xxs font-mono rounded border transition ${simPrompt.includes("feedback") ? "bg-cyan-500/10 text-cyan-400 border-cyan-500/30" : "bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-300"}`}
+                      id="sim_btn_degraded"
+                    >
+                      🟡 Degraded (Retry)
+                    </button>
+                    <button
+                      onClick={() => { setSimPrompt("Write a Python script that scrapes headlines from a news website and sends an email digest."); setSimStep(0); setSimMetrics(null); setSimLogs([]); }}
+                      disabled={isSimulating}
+                      className={`px-3 py-1.5 text-xxs font-mono rounded border transition ${simPrompt.includes("scrapes") ? "bg-cyan-500/10 text-cyan-400 border-cyan-500/30" : "bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-300"}`}
+                      id="sim_btn_complex"
+                    >
+                      🔴 Complex Query
+                    </button>
+                  </div>
+                </div>
+
+                {/* Prompt display and trigger */}
+                <div className="flex gap-3 mb-6">
+                  <div className="flex-1 bg-slate-950 font-mono text-xs text-slate-300 p-3 rounded border border-slate-800 leading-relaxed flex items-center">
+                    <span className="text-cyan-400 font-bold mr-2">&gt;</span> {simPrompt}
+                  </div>
+                  <button
+                    onClick={startSimulation}
+                    disabled={isSimulating}
+                    className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold px-6 rounded text-xs transition flex items-center gap-1.5 disabled:opacity-50 shrink-0"
+                    id="sim_btn_trigger"
+                  >
+                    {isSimulating ? (
+                      <>
+                        <RefreshCw className="h-3 w-3 animate-spin" />
+                        Running...
+                      </>
+                    ) : (
+                      <>
+                        <Play className="h-3 w-3 fill-current" />
+                        Run Simulation
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* Interactive Steps Grid */}
+                <div className="grid gap-4 md:grid-cols-5 mb-6">
+                  
+                  {/* Step 1: TF-IDF */}
+                  <div className={`p-4 rounded-lg border transition ${simStep >= 1 ? (simStep === 1 ? "border-cyan-500/60 bg-cyan-950/10 shadow-[0_0_8px_rgba(34,211,238,0.15)]" : "border-slate-800 bg-slate-900/60") : "border-slate-850 bg-slate-950/20 opacity-40"}`}>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-xxs font-mono uppercase tracking-wider text-slate-500">Step 01</span>
+                      <span className={`h-2.5 w-2.5 rounded-full ${simStep >= 1 ? (simStep === 1 ? "bg-cyan-400 animate-pulse" : "bg-emerald-400") : "bg-slate-700"}`}></span>
+                    </div>
+                    <h4 className="text-xs font-bold text-slate-200">Ingest & TF-IDF</h4>
+                    <p className="text-xxs text-slate-400 mt-1">Vectorizes prompt keywords to audit syntactic structure.</p>
+                  </div>
+
+                  {/* Step 2: Gating Decision */}
+                  <div className={`p-4 rounded-lg border transition ${simStep >= 2 ? (simStep === 2 ? "border-cyan-500/60 bg-cyan-950/10 shadow-[0_0_8px_rgba(34,211,238,0.15)]" : "border-slate-800 bg-slate-900/60") : "border-slate-850 bg-slate-950/20 opacity-40"}`}>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-xxs font-mono uppercase tracking-wider text-slate-500">Step 02</span>
+                      <span className={`h-2.5 w-2.5 rounded-full ${simStep >= 2 ? (simStep === 2 ? "bg-cyan-400 animate-pulse" : "bg-emerald-400") : "bg-slate-700"}`}></span>
+                    </div>
+                    <h4 className="text-xs font-bold text-slate-200">LR Routing Gate</h4>
+                    <p className="text-xxs text-slate-400 mt-1">Calculates complexity score & dynamically steers workload.</p>
+                  </div>
+
+                  {/* Step 3: Silicon Offload */}
+                  <div className={`p-4 rounded-lg border transition ${simStep >= 3 ? (simStep === 3 ? "border-cyan-500/60 bg-cyan-950/10 shadow-[0_0_8px_rgba(34,211,238,0.15)]" : "border-slate-800 bg-slate-900/60") : "border-slate-850 bg-slate-950/20 opacity-40"}`}>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-xxs font-mono uppercase tracking-wider text-slate-500">Step 03</span>
+                      <span className={`h-2.5 w-2.5 rounded-full ${simStep >= 3 ? (simStep === 3 ? "bg-cyan-400 animate-pulse" : "bg-emerald-400") : "bg-slate-700"}`}></span>
+                    </div>
+                    <h4 className="text-xs font-bold text-slate-200">Silicon Offload</h4>
+                    <p className="text-xxs text-slate-400 mt-1">Executes INT8 matrix multiplies on Hexagon NPU.</p>
+                  </div>
+
+                  {/* Step 4: Verification */}
+                  <div className={`p-4 rounded-lg border transition ${simStep >= 4 ? (simStep === 4 ? "border-cyan-500/60 bg-cyan-950/10 shadow-[0_0_8px_rgba(34,211,238,0.15)]" : "border-slate-800 bg-slate-900/60") : "border-slate-850 bg-slate-950/20 opacity-40"}`}>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-xxs font-mono uppercase tracking-wider text-slate-500">Step 04</span>
+                      <span className={`h-2.5 w-2.5 rounded-full ${simStep >= 4 ? (simStep === 4 ? "bg-cyan-400 animate-pulse" : "bg-emerald-400") : "bg-slate-700"}`}></span>
+                    </div>
+                    <h4 className="text-xs font-bold text-slate-200">Self-Verification</h4>
+                    <p className="text-xxs text-slate-400 mt-1">Audits output for token repetition or model collapse.</p>
+                  </div>
+
+                  {/* Step 5: Final Result */}
+                  <div className={`p-4 rounded-lg border transition ${simStep >= 5 ? "border-cyan-500/60 bg-cyan-950/10 shadow-[0_0_8px_rgba(34,211,238,0.15)]" : "border-slate-800 bg-slate-900/60"}`}>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-xxs font-mono uppercase tracking-wider text-slate-500">Step 05</span>
+                      <span className={`h-2.5 w-2.5 rounded-full ${simStep >= 5 ? "bg-emerald-400" : "bg-slate-700"}`}></span>
+                    </div>
+                    <h4 className="text-xs font-bold text-slate-200">Final Outcome</h4>
+                    <p className="text-xxs text-slate-400 mt-1">Renders telemetry and saves statistics.</p>
+                  </div>
+
+                </div>
+
+                {/* Two Column details: logs and telemetry */}
+                <div className="grid gap-4 md:grid-cols-2">
+                  {/* Logs terminal */}
+                  <div className="bg-slate-950 p-4 rounded-lg border border-slate-900 h-44 overflow-y-auto font-mono text-xxs leading-relaxed text-emerald-400 scrollbar-thin">
+                    <p className="text-slate-500 border-b border-slate-900 pb-1 mb-2 font-bold uppercase tracking-wider font-mono text-xxs">// Simulated Execution Logs</p>
+                    {simLogs.length === 0 && <p className="text-slate-600 italic">Press "Run Simulation" to trace prompt...</p>}
+                    {simLogs.map((log, idx) => (
+                      <p key={idx} className={log.includes("ERROR") ? "text-rose-400 font-semibold" : (log.includes("WARNING") ? "text-amber-400 font-semibold" : "text-emerald-400")}>
+                        {log}
+                      </p>
+                    ))}
+                    {isSimulating && <span className="inline-block w-1.5 h-3 bg-emerald-400 animate-pulse ml-0.5" />}
+                  </div>
+
+                  {/* Telemetry output */}
+                  <div className="bg-slate-950 p-4 rounded-lg border border-slate-900 flex flex-col justify-between h-44">
+                    <div>
+                      <p className="text-slate-500 border-b border-slate-900 pb-1 mb-2 font-bold uppercase tracking-wider font-mono text-xxs">// Real-time Telemetry Metrics</p>
+                      {simMetrics ? (
+                        <div className="grid grid-cols-3 gap-2 mt-4 text-center font-mono">
+                          <div className="bg-slate-900 p-2 rounded border border-slate-800">
+                            <p className="text-xxs text-slate-500 uppercase">Latency</p>
+                            <p className="text-sm font-bold text-cyan-400 mt-1">{simMetrics.latency}ms</p>
+                          </div>
+                          <div className="bg-slate-900 p-2 rounded border border-slate-800">
+                            <p className="text-xxs text-slate-500 uppercase">Energy</p>
+                            <p className="text-sm font-bold text-amber-400 mt-1">{simMetrics.energy > 0 ? `${simMetrics.energy}J` : "0.00J"}</p>
+                          </div>
+                          <div className="bg-slate-900 p-2 rounded border border-slate-800">
+                            <p className="text-xxs text-slate-500 uppercase">Cloud Cost</p>
+                            <p className="text-sm font-bold text-rose-400 mt-1">${simMetrics.cost.toFixed(4)}</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-slate-600 italic text-xxs mt-4 text-center">Awaiting execution metrics...</p>
+                      )}
+                    </div>
+                    {simMetrics && (
+                      <div className="text-xxs font-mono text-slate-400 text-center border-t border-slate-900 pt-2 flex items-center justify-between">
+                        <span>Pathway: <strong>{simMetrics.decision}</strong></span>
+                        <span className={`px-2 py-0.5 rounded ${simMetrics.path === "local" ? "bg-emerald-950/40 text-emerald-400 border border-emerald-900/30" : (simMetrics.path === "local_retry" ? "bg-amber-950/40 text-amber-400 border border-amber-900/30" : "bg-rose-950/40 text-rose-400 border border-rose-900/30")}`}>
+                          {simMetrics.path.toUpperCase()}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+              </div>
 
               {/* Research Grid */}
               <div className="grid gap-6 md:grid-cols-2">
