@@ -46,13 +46,8 @@ class AIHubCoordinator:
             try:
                 # Convert runtime choice to compile target option
                 # Target options: --target_runtime qnn, --target_runtime onnx, etc.
-                target_map = {
-                    "qnn_context_binary": "qnn",
-                    "precompiled_qnn_onnx": "onnx",
-                    "onnx": "onnx",
-                    "qnn_dlc": "qnn"
-                }
-                target_runtime = target_map.get(runtime, "qnn")
+                # Pass the runtime choice directly as target option (e.g. qnn_context_binary)
+                target_runtime = runtime
                 
                 logger.info(f"Submitting native compile job to Qualcomm AI Hub for {model_name}...")
                 
