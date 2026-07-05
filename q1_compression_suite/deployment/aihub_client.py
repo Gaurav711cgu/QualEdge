@@ -187,7 +187,8 @@ class AIHubCoordinator:
                     "IN_PROGRESS": "running",
                     "QUEUED": "queued"
                 }
-                mapped_status = status_map.get(status.code, "failed")
+                mapped_status = status_map.get(status.code, "running")
+                logger.info(f"AI Hub job {job_id} raw status: {status.code} -> mapped to: {mapped_status}")
                 
                 latency_ms = None
                 cpu_fallbacks = []
