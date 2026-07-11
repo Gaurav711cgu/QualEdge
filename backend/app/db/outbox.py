@@ -9,6 +9,7 @@ import time
 from datetime import datetime
 from typing import Dict, Any, Optional, List
 from backend.app.db.session import get_connection
+from backend.app.core.queue_protocol import BaseQueueProvider
 
 logger = logging.getLogger("Transactional-Outbox")
 
@@ -139,3 +140,34 @@ def start_outbox_worker(pipeline_callback) -> None:
 
     t = threading.Thread(target=worker_loop, daemon=True, name="Outbox-Worker")
     t.start()
+
+
+class SQLiteOutboxProvider(BaseQueueProvider):
+    """
+    SQLite-backed Transactional Outbox provider.
+    Fulfills the BaseQueueProvider interface.
+    """
+    def enqueue(
+        self, 
+        event_id: str, 
+        event_type: str, 
+        payload: Dict[str, Any], 
+        connection: Optional[Any] = None
+    ) -> None:
+        if connection is None:
+            conn = get_connection()
+            try:
+                enqueue_outbox_event(conn, event_id, event_type, payload)
+                conn.commit()
+            except Exception as e:
+                conn.rollback()
+                logger.error(f"Failed to enqueue event {event_id}: {e}")
+                raise
+            finally:
+                conn.close()
+        else:
+            enqueue_outbox_event(connection, event_id, event_type, payload)
+
+    def start_worker(self, callback: Any) -> None:
+        start_outbox_worker(callback)
+

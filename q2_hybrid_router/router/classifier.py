@@ -318,7 +318,7 @@ class HybridRouter:
             "probabilities": [round(float(p), 3) for p in prob]
         }
 
-    def _extract_input_features(self, query: str, X_tfidf, prob: np.ndarray) -> Dict[str, float]:
+    def _extract_input_features(self, query: str, X_tfidf, prob: np.ndarray) -> Dict[str, Any]:
         """
         Extracts measurable input-side features used for PSI drift monitoring.
         We monitor the *input distribution*, not the output decision distribution.
@@ -334,6 +334,7 @@ class HybridRouter:
             "unique_word_ratio": float(len(set(words)) / n_words),
             "tfidf_norm": tfidf_norm,
             "classifier_entropy": entropy,
+            "query_text": query
         }
 
     def _compute_reference_feature_stats(self, train_x: List[str]) -> None:
@@ -415,6 +416,7 @@ class HybridRouter:
         if psi > self.psi_alert:
             status = "alert"
             logger.error(f"[MLOps Alert] Input query population drift detected! PSI={psi:.4f} > alert_limit={self.psi_alert}")
+            self.dynamic_retrain()
         elif psi > self.psi_warning:
             status = "warning"
             logger.warning(f"[MLOps Warning] Input query population drift warning. PSI={psi:.4f} > warning_limit={self.psi_warning}")
@@ -422,6 +424,62 @@ class HybridRouter:
             status = "stable"
 
         return round(psi, 4), status
+
+    def dynamic_retrain(self) -> None:
+        """
+        Dynamically retrains the classifier on the original training dataset augmented
+        with the drifted queries in the history window, assigning ground-truth proxy labels.
+        Updates the baseline PSI reference distribution to match the newly adapted data.
+        """
+        try:
+            logger.info("Dynamic Retraining Triggered: Adapting router to new query population...")
+            # 1. Retrieve drifted queries from history
+            drifted_queries = [f["query_text"] for f in self.input_feature_history if isinstance(f, dict) and "query_text" in f]
+            if not drifted_queries:
+                logger.info("No query text found in history. Skipping dynamic retrain.")
+                return
+
+            # 2. Assign ground-truth proxy labels to drifted queries (oracle simulation)
+            new_x = drifted_queries
+            new_y = []
+            for q in new_x:
+                words = q.split()
+                if len(words) < 8:
+                    new_y.append(0)  # Simple
+                elif len(words) < 25:
+                    new_y.append(1)  # Moderate
+                else:
+                    new_y.append(2)  # Complex
+
+            # 3. Load baseline dataset
+            train_x, train_y, test_x, test_y = load_router_dataset()
+
+            # 4. Augment training set
+            augmented_train_x = list(train_x) + new_x
+            augmented_train_y = list(train_y) + new_y
+
+            # 5. Fit vectorizer and train Logistic Regression model
+            X_train_aug = self.vectorizer.fit_transform(augmented_train_x)
+            self.clf.fit(X_train_aug, augmented_train_y)
+
+            # 6. Recalibrate temperature scaling on the validation set
+            X_val = self.vectorizer.transform(test_x)
+            val_logits = self.clf.decision_function(X_val)
+            self.tfidf_temp = self._calibrate_temperature(val_logits, np.array(test_y))
+
+            # 7. Update reference statistics (re-centering PSI to the new population baseline)
+            self._compute_reference_feature_stats(augmented_train_x)
+
+            # 8. Reset history window
+            self.input_feature_history.clear()
+
+            logger.info(
+                f"Dynamic retraining completed. Augmented dataset size: {len(augmented_train_x)}. "
+                f"Calibrated TF-IDF Temp reset to T={self.tfidf_temp:.2f}. "
+                "PSI reference baseline updated successfully."
+            )
+        except Exception as e:
+            logger.error(f"Dynamic retraining failed: {e}")
 
     def verify_local_output(self, query: str, output: str) -> bool:
         """

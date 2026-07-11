@@ -38,8 +38,8 @@ class CompressionService:
         self._load_cached_runs()
 
         # Start the transactional outbox background worker
-        from backend.app.db.outbox import start_outbox_worker
-        start_outbox_worker(self._run_pipeline_async)
+        from backend.app.core import state
+        state.queue_provider.start_worker(self._run_pipeline_async)
 
     def _populate_baselines(self):
         """
@@ -146,13 +146,13 @@ class CompressionService:
 
         # Enqueue event atomically
         from backend.app.db.session import get_connection
-        from backend.app.db.outbox import enqueue_outbox_event
+        from backend.app.core import state
         conn = get_connection()
         try:
-            enqueue_outbox_event(conn, run_id, "compression_run", {
+            state.queue_provider.enqueue(run_id, "compression_run", {
                 "model_name": model_name,
                 "ood_calibration": ood_calibration
-            })
+            }, connection=conn)
             conn.commit()
         except Exception as e:
             conn.rollback()
