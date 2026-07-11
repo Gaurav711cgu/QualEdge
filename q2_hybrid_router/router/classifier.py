@@ -34,6 +34,11 @@ class HybridRouter:
         self.modernbert_model = None
         self.clf_modernbert = LogisticRegression(solver="lbfgs", max_iter=1000)
 
+        # Probability Calibration & Feature Clipping
+        self.tfidf_temp = 1.0
+        self.modernbert_temp = 1.0
+        self.feature_bounds = {}
+
         # State tracking for drift detection
         self.train_distribution = np.array([0.4, 0.35, 0.25])
         self.rolling_window = self.config["drift"]["rolling_window_queries"]
@@ -52,11 +57,30 @@ class HybridRouter:
         self.is_trained = False
         self._train_and_calibrate()
 
+    def _calibrate_temperature(self, logits: np.ndarray, labels: np.ndarray) -> float:
+        """
+        Fits a temperature parameter T > 0 by minimizing cross-entropy loss on a validation set.
+        """
+        best_nll = float('inf')
+        best_T = 1.0
+        # Search T from 0.1 to 4.0 in steps of 0.05
+        for T in np.arange(0.1, 4.1, 0.05):
+            scaled_logits = logits / T
+            exp_logits = np.exp(scaled_logits - np.max(scaled_logits, axis=1, keepdims=True))
+            probs = exp_logits / np.sum(exp_logits, axis=1, keepdims=True)
+            nll = 0.0
+            for idx, label in enumerate(labels):
+                nll -= np.log(probs[idx, label] + 1e-15)
+            if nll < best_nll:
+                best_nll = nll
+                best_T = T
+        return float(best_T)
+
     def _train_and_calibrate(self):
         """
         Trains the TF-IDF vectorizer and Logistic Regression classifier on the local dataset.
-        Also attempts to load ModernBERT and train the ModernBERT classifier on embeddings.
-        Computes reference input feature statistics for PSI drift monitoring.
+        Also performs temperature scaling calibration on the test/validation set,
+        and computes percentile boundaries for semantic feature clipping.
         """
         try:
             train_x, train_y, test_x, test_y = load_router_dataset()
@@ -65,6 +89,25 @@ class HybridRouter:
             X_train = self.vectorizer.fit_transform(train_x)
             self.clf.fit(X_train, train_y)
             self.is_trained = True
+
+            # Calibrate TF-IDF probabilities using Temperature Scaling on the test split
+            X_val = self.vectorizer.transform(test_x)
+            val_logits = self.clf.decision_function(X_val)
+            self.tfidf_temp = self._calibrate_temperature(val_logits, np.array(test_y))
+
+            # Compute historical 1st and 99th percentiles for feature clipping
+            lengths = [len(q.split()) for q in train_x]
+            norms = [float(np.linalg.norm(self.vectorizer.transform([q]).toarray())) for q in train_x]
+            self.feature_bounds = {
+                "query_length": {
+                    "p1": max(float(np.percentile(lengths, 1)), 1.0),
+                    "p99": float(np.percentile(lengths, 99))
+                },
+                "tfidf_norm": {
+                    "p1": float(np.percentile(norms, 1)),
+                    "p99": float(np.percentile(norms, 99))
+                }
+            }
 
             # Record train set class distribution
             unique, counts = np.unique(train_y, return_counts=True)
@@ -79,20 +122,21 @@ class HybridRouter:
             logger.info(
                 f"Router trained. Class ratio: Simple={dist[0]:.2f}, "
                 f"Moderate={dist[1]:.2f}, Complex={dist[2]:.2f}. "
+                f"Calibrated TF-IDF Temp T={self.tfidf_temp:.2f}. "
                 f"PSI reference computed on {len(train_x)} training queries."
             )
             
             # 2. Train ModernBERT classifier
-            self._load_and_train_modernbert(train_x, train_y)
+            self._load_and_train_modernbert(train_x, train_y, test_x, test_y)
 
         except Exception as e:
             logger.error(f"Router training failed: {str(e)}. Using default weights fallback.")
             self.is_trained = False
 
-    def _load_and_train_modernbert(self, train_x: List[str], train_y: List[int]):
+    def _load_and_train_modernbert(self, train_x: List[str], train_y: List[int], test_x: List[str], test_y: List[int]):
         """
         Attempts to load nomic-ai/modernbert-embed-base and train a LogisticRegression
-        classifier on its embeddings. Falls back gracefully on failure.
+        classifier on its embeddings. Fits temperature calibration on the validation set.
         """
         try:
             from transformers import AutoTokenizer, AutoModel
@@ -118,16 +162,30 @@ class HybridRouter:
                 )
                 with torch.no_grad():
                     outputs = self.modernbert_model(**inputs)
-                    # Mean pooling over token embeddings
                     emb = outputs.last_hidden_state.mean(dim=1).cpu().numpy()
                     embeddings.append(emb)
 
             X_emb_train = np.vstack(embeddings)
-            
-            # Train separate classifier on embeddings
             self.clf_modernbert.fit(X_emb_train, train_y)
+
+            # Generate validation set embeddings for temperature calibration
+            val_embeddings = []
+            for i in range(0, len(test_x), batch_size):
+                batch_queries = test_x[i:i+batch_size]
+                inputs = self.modernbert_tokenizer(
+                    batch_queries, padding=True, truncation=True, max_length=128, return_tensors="pt"
+                )
+                with torch.no_grad():
+                    outputs = self.modernbert_model(**inputs)
+                    emb = outputs.last_hidden_state.mean(dim=1).cpu().numpy()
+                    val_embeddings.append(emb)
+
+            X_emb_val = np.vstack(val_embeddings)
+            val_logits = self.clf_modernbert.decision_function(X_emb_val)
+            self.modernbert_temp = self._calibrate_temperature(val_logits, np.array(test_y))
+
             self.modernbert_available = True
-            logger.info("ModernBERT router classifier trained successfully.")
+            logger.info(f"ModernBERT router classifier trained successfully. Calibrated Temp T={self.modernbert_temp:.2f}")
 
         except Exception as e:
             logger.warning(
@@ -136,17 +194,56 @@ class HybridRouter:
             )
             self.modernbert_available = False
 
+    def _create_anomaly_response(self, reason: str) -> Dict[str, Any]:
+        """Returns a deterministic safe response for anomalous inputs, bypassing ML models."""
+        return {
+            "decision": "cloud",
+            "complexity_score": 1.0,
+            "confidence": 1.0,
+            "router_latency_ms": 0.1,
+            "estimated_npu_energy_j": 0.0,
+            "probabilities": [0.0, 0.0, 1.0],
+            "anomaly_flag": True,
+            "anomaly_reason": reason
+        }
+
     def route(self, query: str, pathway: str = "tfidf") -> Dict[str, Any]:
         """
         Routes the input query and returns routing decision, complexity, confidence,
-        and router decision latency.
-
-        Pathways:
-          - 'tfidf': TF-IDF + Logistic Regression (< 2ms)
-          - 'modernbert': Actual nomic-ai/modernbert-embed-base embedding classification
+        and router decision latency. Applies semantic clipping and anomaly guardrails.
         """
         start_time = time.perf_counter()
+        
+        # 1. Semantic Unit Anomaly Detection Guardrails
+        query_stripped = query.strip()
+        if not query_stripped:
+            logger.warning("[MLOps Alert] Input anomaly: Empty query string received.")
+            return self._create_anomaly_response("Empty query input")
+
+        word_count = len(query_stripped.split())
+        if word_count > 1000 or len(query_stripped) > 8000:
+            logger.warning(f"[MLOps Alert] Input anomaly: Query length exceeds limits ({word_count} words).")
+            return self._create_anomaly_response("Query length anomaly (>1000 words)")
+
+        non_alphanumeric = sum(1 for c in query_stripped if not c.isalnum() and not c.isspace())
+        if len(query_stripped) > 20 and (non_alphanumeric / len(query_stripped)) > 0.35:
+            logger.warning("[MLOps Alert] Input anomaly: Gibberish/special character ratio too high.")
+            return self._create_anomaly_response("Gibberish/character distribution anomaly")
+
         use_modernbert = (pathway == "modernbert" and self.modernbert_available)
+
+        # 2. Semantic Feature Clipping
+        # Limit query to p99 length limit computed at training time to prevent extrapolation artifacts
+        if self.is_trained and "query_length" in self.feature_bounds:
+            p99_len = int(self.feature_bounds["query_length"]["p99"])
+            words = query_stripped.split()
+            if len(words) > p99_len:
+                clipped_query = " ".join(words[:p99_len])
+                logger.info(f"Query clipped from {len(words)} to 99th percentile {p99_len} words.")
+            else:
+                clipped_query = query_stripped
+        else:
+            clipped_query = query_stripped
 
         if not self.is_trained:
             decision_code = 0
@@ -158,24 +255,30 @@ class HybridRouter:
                 try:
                     import torch
                     inputs = self.modernbert_tokenizer(
-                        query, padding=True, truncation=True, max_length=128, return_tensors="pt"
+                        clipped_query, padding=True, truncation=True, max_length=128, return_tensors="pt"
                     )
                     with torch.no_grad():
                         outputs = self.modernbert_model(**inputs)
                         emb = outputs.last_hidden_state.mean(dim=1).cpu().numpy()
-                    prob = self.clf_modernbert.predict_proba(emb)[0]
+                    
+                    # Compute temperature calibrated probability using decision function (logits)
+                    logits = self.clf_modernbert.decision_function(emb)[0]
+                    scaled_logits = logits / self.modernbert_temp
+                    exp_logits = np.exp(scaled_logits - np.max(scaled_logits))
+                    prob = exp_logits / np.sum(exp_logits)
                 except Exception as e:
                     logger.warning(f"Failed to compute ModernBERT embedding: {e}. Falling back to TF-IDF.")
                     use_modernbert = False
 
             if not use_modernbert:
-                # TF-IDF fallback path
-                X_query = self.vectorizer.transform([query])
-                prob = self.clf.predict_proba(X_query)[0]
+                # TF-IDF fallback path with Temperature Scaling calibration
+                X_query = self.vectorizer.transform([clipped_query])
+                logits = self.clf.decision_function(X_query)[0]
+                scaled_logits = logits / self.tfidf_temp
+                exp_logits = np.exp(scaled_logits - np.max(scaled_logits))
+                prob = exp_logits / np.sum(exp_logits)
 
-            # Expected Value / Complexity Score
-            # simple = 0, moderate = 1, complex = 2
-            # complexity_score = sum(P(Class_i) * i) / 2.0 (normalized to 0-1)
+            # Expected Value / Complexity Score (normalized to 0-1)
             complexity_score = (prob[1] * 1.0 + prob[2] * 2.0) / 2.0
 
             # Apply routing thresholds
@@ -187,8 +290,8 @@ class HybridRouter:
                 decision_code = 2  # cloud
 
             # Record input features for drift monitoring using TF-IDF features
-            X_query_ref = self.vectorizer.transform([query])
-            features = self._extract_input_features(query, X_query_ref, prob)
+            X_query_ref = self.vectorizer.transform([clipped_query])
+            features = self._extract_input_features(clipped_query, X_query_ref, prob)
             self.input_feature_history.append(features)
 
         # Measure real router latency
@@ -311,8 +414,10 @@ class HybridRouter:
 
         if psi > self.psi_alert:
             status = "alert"
+            logger.error(f"[MLOps Alert] Input query population drift detected! PSI={psi:.4f} > alert_limit={self.psi_alert}")
         elif psi > self.psi_warning:
             status = "warning"
+            logger.warning(f"[MLOps Warning] Input query population drift warning. PSI={psi:.4f} > warning_limit={self.psi_warning}")
         else:
             status = "stable"
 

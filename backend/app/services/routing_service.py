@@ -46,6 +46,7 @@ class RoutingService:
         cpu_fallback_ops = []
         execution_device = "Hexagon NPU"
         cloud_cost = 0.0
+        react_trace = None
         
         # 2. Execute decision
         if decision in ["on_device", "on_device_with_retry"]:
@@ -66,6 +67,7 @@ class RoutingService:
                     final_text = cloud_res["text"]
                     execution_device = "Cloud Model (Retry Fallback)"
                     cloud_cost = cloud_res["cost_usd"]
+                    react_trace = cloud_res.get("react_trace")
                     decision = "cloud" # Escaled to cloud
                     self.cloud_routed_queries += 1
                 else:
@@ -78,6 +80,7 @@ class RoutingService:
             final_text = cloud_res["text"]
             execution_device = f"Cloud Model ({self.config['models']['cloud']['name']})"
             cloud_cost = cloud_res["cost_usd"]
+            react_trace = cloud_res.get("react_trace")
             self.cloud_routed_queries += 1
             
         # Estimate NPU energy based on HTP INT4 operations vs Kryo CPU fallback
@@ -91,7 +94,7 @@ class RoutingService:
                 estimated_energy = self.config["economics"]["on_device"]["energy_htp_j"]
         else:
             estimated_energy = 0.0
-
+ 
         return {
             "decision": decision,
             "complexityScore": complexity_score,
@@ -102,7 +105,8 @@ class RoutingService:
             "source": "measured",
             "text": final_text,
             "cpuFallbackOps": cpu_fallback_ops,
-            "device": execution_device
+            "device": execution_device,
+            "reactTrace": react_trace
         }
 
     def get_sweep_points(self) -> List[Dict[str, Any]]:

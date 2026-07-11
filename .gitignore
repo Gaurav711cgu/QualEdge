@@ -59,10 +59,18 @@ coverage.xml
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
+*.db
+*.db-journal
+backend/app/data/*.db
+backend/app/data/*.db-journal
+
 
 # Flask stuff:
 instance/
 .webassets-cache
+.env
+.env.*
+
 
 # Scrapy stuff:
 .scrapy

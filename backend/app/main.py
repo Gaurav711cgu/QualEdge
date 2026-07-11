@@ -1,7 +1,11 @@
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from backend.app.api.endpoints import router
+from backend.app.api.routers import overview, compression, aihub, routing
+from backend.app.core.logging import setup_logging
+
+# Configure structured telemetry
+setup_logging()
 
 app = FastAPI(
     title="Snapdragon Edge AI Console Backend",
@@ -19,7 +23,10 @@ app.add_middleware(
 )
 
 # Mount endpoints
-app.include_router(router)
+app.include_router(overview.router, prefix="/api")
+app.include_router(compression.router, prefix="/api")
+app.include_router(aihub.router, prefix="/api")
+app.include_router(routing.router, prefix="/api")
 
 # Serve React frontend static files if they are built (production packaging)
 from fastapi.staticfiles import StaticFiles

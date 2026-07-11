@@ -53,6 +53,7 @@ class RouterResult(BaseModel):
     text: str
     cpuFallbackOps: List[str]
     device: str
+    reactTrace: Optional[str] = None
 
 class ThresholdSweepPoint(BaseModel):
     threshold: float

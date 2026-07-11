@@ -37,6 +37,10 @@ class CompressionService:
         self._populate_baselines()
         self._load_cached_runs()
 
+        # Start the transactional outbox background worker
+        from backend.app.db.outbox import start_outbox_worker
+        start_outbox_worker(self._run_pipeline_async)
+
     def _populate_baselines(self):
         """
         Populates reference baselines from Qualcomm datasheets and published benchmarks.
@@ -120,16 +124,15 @@ class CompressionService:
     def trigger_run(self, model_name: str, ood_calibration: bool = False) -> str:
         """
         Triggers a new compression and AI Hub profiling pipeline run for a model.
-        Kicks off a non-blocking background thread to perform optimization.
+        Transactionally enqueues a task to the outbox database, handled by a background worker.
         """
         if model_name not in ["mobilenet_v2", "whisper_tiny", "phi_3_mini"]:
             raise ValueError(f"Unknown model name: {model_name}")
 
         run_id = f"run_{uuid.uuid4().hex[:8]}"
-        logger.info(f"Triggering asynchronous pipeline run {run_id} for model {model_name}...")
+        logger.info(f"Triggering asynchronous pipeline run {run_id} via Transactional Outbox...")
 
         # Initialize the runs structure in memory with all pending stages.
-        # This matches the CompressionStage Pydantic schemas exactly.
         self.runs[run_id] = [
             {"name": "fp32", "status": "pending", "notes": "Waiting to load baseline FP32 model."},
             {"name": "bn_fold", "status": "pending", "notes": "Waiting to fold batch normalization layers."},
@@ -141,10 +144,22 @@ class CompressionService:
             {"name": "aihub_profile", "status": "pending", "notes": "Waiting for QAI Hub performance profiling on Hexagon NPU."}
         ]
 
-        import threading
-        thread = threading.Thread(target=self._run_pipeline_async, args=(run_id, model_name, ood_calibration))
-        thread.daemon = True
-        thread.start()
+        # Enqueue event atomically
+        from backend.app.db.session import get_connection
+        from backend.app.db.outbox import enqueue_outbox_event
+        conn = get_connection()
+        try:
+            enqueue_outbox_event(conn, run_id, "compression_run", {
+                "model_name": model_name,
+                "ood_calibration": ood_calibration
+            })
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            logger.error(f"Failed to transactionally enqueue compression run: {e}")
+            raise
+        finally:
+            conn.close()
 
         return run_id
 
