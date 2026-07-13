@@ -20,8 +20,13 @@ try:
     AIMET_AVAILABLE = True
     logger.info("Qualcomm AIMET SDK successfully loaded. Running in production NATIVE mode.")
 except ImportError:
-    from q1_compression_suite.compression.simulator import CompressionSimulator
     logger.warning("Qualcomm AIMET SDK not found (standard behavior on macOS). Falling back to SIMULATION mode.")
+
+# Always import CompressionSimulator — used when AIMET unavailable or force_simulate=True
+try:
+    from q1_compression_suite.compression.simulator import CompressionSimulator
+except ImportError:
+    CompressionSimulator = None
 
 def replace_relu6_with_relu(model: nn.Module) -> int:
     """
@@ -40,15 +45,27 @@ def replace_relu6_with_relu(model: nn.Module) -> int:
     return replaced_count
 
 class AIMETCompressionPipeline:
-    def __init__(self, model_name: str, config: Dict[str, Any], ood_calibration: bool = False):
+    def __init__(
+        self,
+        model_name: str,
+        config: Dict[str, Any],
+        ood_calibration: bool = False,
+        force_simulate: bool = False,
+    ):
         self.model_name = model_name
         self.config = config
         self.ood_calibration = ood_calibration
         self.model_cfg = config["models"][model_name]
         self.family = self.model_cfg["family"]
-        
-        # Instantiate simulator if native AIMET is not available
-        self.simulator = None if AIMET_AVAILABLE else CompressionSimulator()
+        self._use_simulator = force_simulate or not AIMET_AVAILABLE
+
+        # Instantiate simulator when AIMET is unavailable or simulation is forced
+        if self._use_simulator:
+            if CompressionSimulator is None:
+                raise RuntimeError("CompressionSimulator could not be imported.")
+            self.simulator = CompressionSimulator()
+        else:
+            self.simulator = None
         
     def run_pipeline(self, model: Optional[nn.Module] = None, calibration_loader: Optional[DataLoader] = None) -> List[Dict[str, Any]]:
         """
@@ -57,7 +74,7 @@ class AIMETCompressionPipeline:
         """
         results = []
         
-        if not AIMET_AVAILABLE:
+        if self._use_simulator:
             logger.info(f"Starting simulated pipeline execution for model: {self.model_name}...")
             stages = ["fp32", "bn_fold", "cle", "relu6_replace", "adaround_w8a8", "adaround_w4a8"]
             for stage in stages:

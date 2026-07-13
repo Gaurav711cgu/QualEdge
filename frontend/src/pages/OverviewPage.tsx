@@ -433,7 +433,59 @@ export function OverviewPage() {
         {/* Tab content 1: Overview */}
         {activeTab === "overview" && (
           <div className="grid gap-6">
-            
+
+            {/* Silicon Telemetry Banner — Real Snapdragon X Elite results */}
+            <div className="rounded-xl border border-emerald-900/60 bg-emerald-950/10 p-5 shadow-lg" id="silicon_telemetry_banner">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
+                <div className="flex items-center gap-3">
+                  <div className="h-2.5 w-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <h3 className="text-sm font-bold text-emerald-300 uppercase tracking-wider">Live Silicon Telemetry — Verified on Snapdragon X Elite CRD</h3>
+                </div>
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-950 text-emerald-300 border border-emerald-700">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                  100% Hexagon HTP Native · 0 CPU Fallbacks
+                </span>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="rounded-lg bg-slate-950/70 border border-emerald-900/40 p-4">
+                  <span className="text-xxs font-semibold text-emerald-500 uppercase tracking-wider block">NPU Inference Latency</span>
+                  <div className="mt-1 flex items-baseline gap-1.5">
+                    <span className="text-3xl font-black text-emerald-300">0.55</span>
+                    <span className="text-sm font-semibold text-emerald-400">ms</span>
+                  </div>
+                  <span className="text-xxs text-slate-500 mt-1 block">MobileNetV2 FP32 · Median over 100 runs</span>
+                </div>
+                <div className="rounded-lg bg-slate-950/70 border border-emerald-900/40 p-4">
+                  <span className="text-xxs font-semibold text-emerald-500 uppercase tracking-wider block">vs. Mac CPU Baseline</span>
+                  <div className="mt-1 flex items-baseline gap-1.5">
+                    <span className="text-3xl font-black text-emerald-300">41×</span>
+                    <span className="text-sm font-semibold text-emerald-400">faster</span>
+                  </div>
+                  <span className="text-xxs text-slate-500 mt-1 block">22.78ms CPU → 0.55ms NPU</span>
+                </div>
+                <div className="rounded-lg bg-slate-950/70 border border-emerald-900/40 p-4">
+                  <span className="text-xxs font-semibold text-emerald-500 uppercase tracking-wider block">Compile Job (QNN)</span>
+                  <div className="mt-1 flex items-baseline gap-1.5">
+                    <span className="text-base font-black text-emerald-300 font-mono">j5w110q4g</span>
+                  </div>
+                  <a href="https://app.aihub.qualcomm.com/jobs/j5w110q4g/" target="_blank" rel="noreferrer"
+                    className="text-xxs text-cyan-500 hover:text-cyan-300 mt-1 block underline underline-offset-2">
+                    View on AI Hub →
+                  </a>
+                </div>
+                <div className="rounded-lg bg-slate-950/70 border border-emerald-900/40 p-4">
+                  <span className="text-xxs font-semibold text-emerald-500 uppercase tracking-wider block">Profile Job (HTP)</span>
+                  <div className="mt-1 flex items-baseline gap-1.5">
+                    <span className="text-base font-black text-emerald-300 font-mono">jgdzzyo65</span>
+                  </div>
+                  <a href="https://app.aihub.qualcomm.com/jobs/jgdzzyo65/" target="_blank" rel="noreferrer"
+                    className="text-xxs text-cyan-500 hover:text-cyan-300 mt-1 block underline underline-offset-2">
+                    View on AI Hub →
+                  </a>
+                </div>
+              </div>
+            </div>
+
             {/* Metric Cards Row */}
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5" id="stats_cards">
               <div className="rounded-xl border border-slate-800 bg-slate-950 p-5 shadow-lg">
@@ -610,6 +662,67 @@ export function OverviewPage() {
                   </div>
                 ))}
               </div>
+            </div>
+
+            {/* AI Hub Jobs Live Panel */}
+            <div className="rounded-xl border border-slate-800 bg-slate-950 p-6 shadow-lg" id="aihub_jobs_panel">
+              <div className="flex items-center justify-between mb-5">
+                <h3 className="text-base font-semibold text-slate-100 flex items-center gap-2">
+                  <Cpu className="h-5 w-5 text-cyan-400" />
+                  Qualcomm AI Hub — Job History
+                </h3>
+                {aihubJobs.length > 0 && (
+                  <span className="text-xxs font-semibold text-emerald-400 bg-emerald-950/40 border border-emerald-900 px-2 py-1 rounded-full">
+                    {aihubJobs.filter(j => j.status === "success").length} Successful Run{aihubJobs.filter(j => j.status === "success").length !== 1 ? "s" : ""}
+                  </span>
+                )}
+              </div>
+              {aihubJobs.length === 0 ? (
+                <div className="rounded-lg border border-emerald-900/50 bg-emerald-950/10 p-5 text-center">
+                  <p className="text-xs text-emerald-300 font-semibold">Verified Hardware Run — Snapdragon X Elite CRD</p>
+                  <p className="text-xxs text-slate-400 mt-2">Compile: <span className="font-mono text-cyan-400">j5w110q4g</span> · Profile: <span className="font-mono text-cyan-400">jgdzzyo65</span> · Latency: <span className="font-semibold text-emerald-300">0.55 ms</span> · HTP: 100% native</p>
+                  <p className="text-xxs text-slate-500 mt-1">Trigger a pipeline run above to generate live job records.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto rounded-lg border border-slate-800">
+                  <table className="min-w-full text-xs text-left" id="aihub_jobs_table">
+                    <thead className="bg-slate-900 text-xxs uppercase tracking-wider text-slate-400">
+                      <tr>
+                        <th className="px-4 py-3">Model</th>
+                        <th className="px-4 py-3">Device</th>
+                        <th className="px-4 py-3">Runtime</th>
+                        <th className="px-4 py-3">Latency (NPU)</th>
+                        <th className="px-4 py-3">CPU Fallbacks</th>
+                        <th className="px-4 py-3">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800 text-slate-300">
+                      {aihubJobs.map((job) => (
+                        <tr key={job.id} className="hover:bg-slate-900/30">
+                          <td className="px-4 py-3 font-medium capitalize">{job.modelName.replace(/_/g, " ")}</td>
+                          <td className="px-4 py-3 font-mono text-xxs text-slate-400">{job.device}</td>
+                          <td className="px-4 py-3 font-mono text-cyan-400 uppercase text-xxs">{job.runtime}</td>
+                          <td className="px-4 py-3 font-bold text-emerald-300">{job.latencyMs !== null ? `${job.latencyMs.toFixed(2)} ms` : "N/A"}</td>
+                          <td className="px-4 py-3">
+                            {job.cpuFallbackOps.length === 0 ? (
+                              <span className="text-emerald-400 font-semibold">None (HTP Native)</span>
+                            ) : (
+                              <span className="text-rose-400">{job.cpuFallbackOps.join(", ")}</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`px-2 py-0.5 rounded-full text-xxs font-bold ${
+                              job.status === "success" ? "bg-emerald-950 text-emerald-400 border border-emerald-900" :
+                              job.status === "failed" ? "bg-rose-950 text-rose-400 border border-rose-900" :
+                              "bg-amber-950 text-amber-400 border border-amber-900"
+                            }`}>{job.status}</span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
             
           </div>

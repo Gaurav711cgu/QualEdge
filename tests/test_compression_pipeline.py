@@ -10,7 +10,7 @@ def test_pipeline_simulation():
     with open(config_path, "r") as f:
         config = yaml.safe_load(f)
         
-    pipeline = AIMETCompressionPipeline("mobilenet_v2", config)
+    pipeline = AIMETCompressionPipeline("mobilenet_v2", config, force_simulate=True)
     results = pipeline.run_pipeline()
     
     # Assert stages exist and run successfully
@@ -34,7 +34,7 @@ def test_pipeline_ood_collapse():
         config = yaml.safe_load(f)
         
     # Test Out-Of-Distribution calibration collapse
-    pipeline = AIMETCompressionPipeline("mobilenet_v2", config, ood_calibration=True)
+    pipeline = AIMETCompressionPipeline("mobilenet_v2", config, ood_calibration=True, force_simulate=True)
     results = pipeline.run_pipeline()
     
     # MobileNetV2 FP32 vs W4A8 OOD

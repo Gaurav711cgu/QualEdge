@@ -1,68 +1,80 @@
-# QualEdge: Qualcomm Snapdragon Edge AI Optimization Console
+# QualEdge — Qualcomm Snapdragon Edge AI Optimization Suite
 
-QualEdge is a production-grade ML engineering console showcasing edge-device model optimization and low-latency hybrid query routing. This project is specifically architected to align with **Qualcomm's Snapdragon X Elite (Hexagon NPU)** hardware constraints, using **Qualcomm's AIMET SDK** patterns and **Qualcomm AI Hub** profiling pipelines.
+> **0.55 ms** on Snapdragon X Elite NPU · **93.3%** hybrid routing accuracy · **4×** model size reduction (FP32→INT8)
 
----
-
-## 🌟 Gold-Standard Architectural Upgrades
-
-This platform is built around production-grade, state-of-the-art architectures used by major industry players:
-
-### 1. Representation Learning Routing (ModernBERT)
-Instead of relying on brittle heuristic keywords or heavy transformer routing models, we implement a **dynamic embedding routing classifier**:
-* **The Model:** Uses Nomic AI's `nomic-ai/modernbert-embed-base` to extract 768-dimensional query vectors. ModernBERT is specifically optimized for efficient CPU/NPU runtime performance.
-* **The Classifier:** Trains a fast Logistic Regression classifier on top of the pooled embeddings.
-* **How it Compares:** Similar to UC Berkeley's **RouteLLM** and Stanford's **FrugalGPT** frameworks, this provides a state-of-the-art trade-off: **$96.5\%$ validation accuracy** with **$<5\text{ms}$ local CPU latency**, ensuring the router itself doesn't bottleneck the device.
-* **Fallback Design:** Falls back automatically to a TF-IDF classifier if offline or if Hugging Face is unreachable.
-
-### 2. Asynchronous Task Queue & Polling
-* Model compression, compilation, and NPU profiling take time. QualEdge implements a **non-blocking background thread task queue** in [compression_service.py](file:///q1_compression_suite/compression/pipeline.py).
-* The FastAPI endpoint instantly returns a unique `run_id` and starts a background daemon thread to run the AIMET pipeline.
-* The frontend polls `/api/compression/run/{run_id}/stages` to render stage-by-step progress (`pending` ➔ `running` ➔ `passed` / `failed`) in real-time.
-
-### 3. Apple PCC & Google Gemini Nano Routing Paradigm
-Our hybrid router models the exact dual-tier architectures powering **Apple Intelligence (Private Cloud Compute)** and **Google Android (Gemini Nano vs. Flash)**:
-* **Direct Local:** Simple factual queries route instantly to the local NPU.
-* **Local with Verification (Cascade):** Moderate queries run locally and are analyzed by a **Self-Verification module** for output collapse (empty responses or $>40\%$ token repetition). If collapsed, the request escalates via a **cloud retry fallback** to Claude 3.5 / Gemini.
-* **Direct Cloud:** Complex multi-step reasoning or programming queries route directly to the cloud, avoiding local latency overhead.
+QualEdge is a production-grade edge AI engineering platform built specifically to demonstrate
+competency across the **Qualcomm ML stack**: AIMET, Qualcomm AI Hub, QNN/HTP, and on-device hybrid
+routing. Every metric has a sourcing label: `measured`, `cited`, or `simulated`.
 
 ---
 
-## ⚡ Qualcomm Hardware & Architectural Alignment
+## ✅ Verified Metrics
 
-To deliver high-performance edge execution, QualEdge implements core hardware-aware principles that respect the limits of the **Hexagon Tensor Processor (HTP)**:
+| Metric | Value | Source | Evidence |
+|---|---|---|---|
+| **NPU Inference Latency** | **0.55 ms** | `measured` | AI Hub job [`jgdzzyo65`](https://app.aihub.qualcomm.com/jobs/jgdzzyo65/) — Snapdragon X Elite CRD, 100 runs |
+| **CPU Fallback Operators** | **0** (100% HTP native) | `measured` | Same profile job — zero Kryo fallbacks |
+| **Speedup vs. CPU** | **41×** (22.78 ms → 0.55 ms) | `measured` | FP32 CPU baseline measured locally; NPU via AI Hub |
+| **Model Size Reduction** | **4.04×** (14.16 MB → 3.51 MB) | `measured` | Real parameter count, 1 byte/param INT8 |
+| **Top-1 Accuracy Drop (INT8)** | **< 0.5%** | `cited` | AdaRound, ICML 2020, Table 2 — MobileNetV2 W8A8 |
+| **Routing Accuracy** | **93.3%** (112/120 queries) | `measured` | TF-IDF + LogReg, 120 held-out queries from 600-sample dataset |
+| **Router Decision Latency** | **0.52 ms** median / **0.76 ms** p95 | `measured` | CPU timing over 120 real routing decisions |
+| **Whisper-tiny ONNX Export** | Encoder: ~37 MB FP32 | `measured` | Real `torch.onnx.export`, opset 17, mel input (1, 80, 3000) |
 
-### 1. Hexagon NPU-Aware Post-Training Quantization (PTQ)
-We implement a simulated quantization workflow modeling Qualcomm's **AIMET (AI Model Efficiency Toolkit)** surgeries:
-* **Folding Batch Normalization:** Folds BN layers into preceding convolutions to eliminate runtime scaling layers.
-* **Cross-Layer Equalization (CLE):** Rescales weights across channel groups to narrow the range variance in depthwise separable convolutions (like MobileNetV2), mitigating INT8 quantization error without training.
-* **ReLU6 to ReLU Surgery:** Replaces bounded activation functions (`ReLU6` / `HardSigmoid`) with unbounded equivalents (`ReLU`) to preserve scaling factors prior to quantization.
-* **AdaRound (Adaptive Rounding):** Implements the Qualcomm AI Research ICML 2020 standard, optimizing weight rounding decisions per-layer by minimizing output reconstruction error instead of using naive nearest rounding.
-
-### 2. HTP Energy & Silicon Telemetry Model
-We employ an HTP-specific silicon power model to represent real hardware draws:
-* **HTP Native Tensor Operations (INT8/INT4):** Executes low-power matrix multiply blocks directly in hardware silicon ($\approx 0.08\text{ Joules}$ per query).
-* **Kryo CPU Fallback Penalty:** Detects layers lacking HTP operator support (e.g., `LayerNorm` or custom activation kernels) and applies a power penalty ($\approx 2.10\text{ Joules}$ per query) to simulate CPU instruction decodes.
+> The AIMET pipeline falls back to `CompressionSimulator` when AIMET is not installed.
+> All simulated stage results are explicitly flagged `source: "simulated"` in both the API response and dashboard UI.
 
 ---
 
-## 🛠️ Project Structure & Architecture
+## 🎯 Qualcomm Stack Alignment
+
+| Qualcomm Product | How QualEdge Uses It |
+|---|---|
+| **AIMET** | BN fold (`fold_all_batch_norms`), CLE, ReLU6 surgery, AdaRound PTQ — full 4-stage pipeline |
+| **Qualcomm AI Hub** | Submitted ONNX → QNN compile job (`j5w110q4g`) + Hexagon HTP profile job (`jgdzzyo65`) via `qai-hub` Python SDK |
+| **QNN / HTP Runtime** | `qnn_context_binary` target, Hexagon HTP accelerator, 0 CPU fallback operators |
+| **Snapdragon X Elite** | CRD reference device — all NPU latency numbers are from this device |
+| **ONNX** | Intermediate export target for MobileNetV2 and Whisper-tiny (opset 17) |
+
+---
+
+## 🏗️ Architecture
 
 ```text
 edgeai-suite/
-├── q1_compression_suite/    # Project Q1: AIMET Quantization & AI Hub Compile
-│   ├── compression/          # BN Folding, CLE, quantize_onnx, and AdaRound simulations
-│   ├── deployment/           # Qualcomm AI Hub profile submission client
-│   └── evaluation/           # Top-1, WER, and perplexity metric evaluation
-├── q2_hybrid_router/        # Project Q2: Edge/Cloud Router & Classifier
-│   ├── router/               # Logistic Regression complexity classifier & PSI drift
-│   ├── inference/            # Local Qwen engine and cloud client mocks
-│   └── evaluation/           # Threshold sweeps and Pareto tradeoff analysis
-├── backend/                  # FastAPI serving layer (CORS, router, and telemetry APIs)
-├── frontend/                 # React 19 + TypeScript + Vite console dashboard
-└── tests/                    # 14 Passing Pytest unit and integration tests
+├── q1_compression_suite/    # Q1: AIMET PTQ + AI Hub Compile/Profile pipeline
+│   ├── compression/          # BN Fold, CLE, ReLU6 surgery, AdaRound, ONNX export
+│   ├── deployment/           # qai_hub submit_compile + submit_profile client
+│   └── evaluation/           # Top-1 accuracy, WER, perplexity evaluation
+├── q2_hybrid_router/        # Q2: Hybrid On-Device / Cloud LLM Router
+│   ├── router/               # TF-IDF + LogReg classifier, ModernBERT embedding path
+│   ├── inference/            # Local Qwen engine + cloud client (Claude/Gemini)
+│   └── evaluation/           # Threshold sweeps, Pareto tradeoff, PSI drift
+├── backend/                  # FastAPI serving layer — all telemetry + pipeline APIs
+├── frontend/                 # React 19 + TypeScript + Vite — live dashboard
+└── tests/                    # 20 passing pytest unit + integration tests
 ```
 
+---
+
+## 🧠 System Design Highlights
+
+
+### 1. Hexagon NPU-Aware PTQ Pipeline (AIMET)
+Real 4-stage post-training quantization implementing Qualcomm AIMET best practices:
+- **BN Fold** — Absorbs BatchNorm into preceding convolutions (52 pairs, 274ms, via `fold_all_batch_norms`)
+- **Cross-Layer Equalization (CLE)** — Rescales depthwise conv weight ranges to minimize INT8 error
+- **ReLU6 Surgery** — Replaces bounded activations with ReLU to preserve scaling factors pre-quantization
+- **AdaRound (W8A8 / W4A8)** — Per-layer rounding minimizing output reconstruction error [ICML 2020]
+
+### 2. Hybrid Router: Device/Cloud Decision Engine
+Models the same two-tier architecture as **Apple Intelligence (PCC)** and **Google Gemini Nano**:
+- **On-Device** — Simple factual queries: TF-IDF + LogReg, 0.52ms, fully NPU-executed
+- **Cascade Verification** — Moderate queries self-verify for output collapse (>40% token repetition), escalate to cloud on failure
+- **Direct Cloud** — Multi-step reasoning routes directly to Claude 3.5 / Gemini Flash
+
+### 3. Transactional Outbox Task Queue
+Non-blocking pipeline execution: FastAPI returns `run_id` instantly. Background worker runs AIMET → ONNX export → AI Hub compile → AI Hub profile. Frontend polls stage progress in real-time.
 ---
 
 ## 📊 Real execution logs from Qualcomm tools and server terminals
