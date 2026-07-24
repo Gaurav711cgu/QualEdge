@@ -8,7 +8,7 @@ routing. Every metric has a sourcing label: `measured`, `cited`, or `simulated`.
 
 ---
 
-## ✅ Verified Metrics
+## Verified Metrics
 
 | Metric | Value | Source | Evidence |
 |---|---|---|---|
@@ -26,7 +26,7 @@ routing. Every metric has a sourcing label: `measured`, `cited`, or `simulated`.
 
 ---
 
-## 🎯 Qualcomm Stack Alignment
+## Qualcomm Stack Alignment
 
 | Qualcomm Product | How QualEdge Uses It |
 |---|---|
@@ -38,7 +38,7 @@ routing. Every metric has a sourcing label: `measured`, `cited`, or `simulated`.
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ```text
 edgeai-suite/
@@ -57,7 +57,7 @@ edgeai-suite/
 
 ---
 
-## 🧠 System Design Highlights
+## System Design Highlights
 
 
 ### 1. Hexagon NPU-Aware PTQ Pipeline (AIMET)
@@ -77,7 +77,7 @@ Models the same two-tier architecture as **Apple Intelligence (PCC)** and **Goog
 Non-blocking pipeline execution: FastAPI returns `run_id` instantly. Background worker runs AIMET → ONNX export → AI Hub compile → AI Hub profile. Frontend polls stage progress in real-time.
 ---
 
-## 📊 Real execution logs from Qualcomm tools and server terminals
+## Real execution logs from Qualcomm tools and server terminals
 
 Below are verified execution logs capturing the platform's behavior in production:
 
@@ -176,7 +176,7 @@ INFO:Compression-Service:Pipeline run run_8b1fa2e completed successfully. Result
 
 ---
 
-## 🚀 Quick Start & Verification
+## Quick Start & Verification
 
 ### 1. Install & Test Suite
 Verify the backend, pipeline, and router logic:
