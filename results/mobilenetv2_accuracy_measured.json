@@ -1,0 +1,10 @@
+{
+  "measured_at": "2026-07-24T16:30:17.032226+00:00",
+  "dataset": "imagenette/val (3,925 validation images)",
+  "model": "mobilenet_v2_imagenet1k_v1",
+  "fp32_top1": 67.85,
+  "int8_top1": 67.8,
+  "accuracy_delta": 0.05,
+  "quantization": "dynamic_int8_linear_qnnpack",
+  "source": "measured"
+}

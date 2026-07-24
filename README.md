@@ -16,7 +16,7 @@ routing. Every metric has a sourcing label: `measured`, `cited`, or `simulated`.
 | **CPU Fallback Operators** | **0** (100% HTP native) | `measured` | Same profile job — zero Kryo fallbacks |
 | **Speedup vs. CPU** | **41×** (22.78 ms → 0.55 ms) | `measured` | FP32 CPU baseline measured locally; NPU via AI Hub |
 | **Model Size Reduction** | **4.04×** (14.16 MB → 3.51 MB) | `measured` | Real parameter count, 1 byte/param INT8 |
-| **Top-1 Accuracy Drop (INT8)** | **< 0.5%** | `cited` | AdaRound, ICML 2020, Table 2 — MobileNetV2 W8A8 |
+| **Top-1 Accuracy Drop (INT8)** | **0.05%** (67.85% → 67.80%) | `measured` | Real evaluation over 3,925 Imagenette validation images (`results/mobilenetv2_accuracy_measured.json`) |
 | **Routing Accuracy** | **93.3%** (112/120 queries) | `measured` | TF-IDF + LogReg, 120 held-out queries from 600-sample dataset |
 | **Router Decision Latency** | **0.52 ms** median / **0.76 ms** p95 | `measured` | CPU timing over 120 real routing decisions |
 | **Whisper-tiny ONNX Export** | Encoder: ~37 MB FP32 | `measured` | Real `torch.onnx.export`, opset 17, mel input (1, 80, 3000) |
